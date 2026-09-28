@@ -3,10 +3,12 @@
 import json
 import os
 
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 
-CKPT = r"F:\projects\_scratch\nano-hybrid\ckpt"
+CKPT = sys.argv[1] if len(sys.argv) > 1 else "ckpt"
 OUT = os.path.join(CKPT, "figures")
 os.makedirs(OUT, exist_ok=True)
 

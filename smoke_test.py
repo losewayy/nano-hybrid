@@ -5,7 +5,7 @@ from nanohybrid.model import NanoLM
 from nanohybrid.deltanet import delta_rule_chunk, delta_rule_recurrent
 
 torch.manual_seed(0)
-dev = "cuda"
+dev = "cuda" if torch.cuda.is_available() else "cpu"
 
 # --- 1. chunk vs recurrent equivalence (with and without initial state) ---
 B, H, T, K, V = 2, 6, 128, 32, 32

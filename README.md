@@ -38,10 +38,11 @@ Two models, same everything — data order, eval subset, hyperparameters, 4000 s
 
 ```
 pip install -r requirements.txt
-python -m nanohybrid.prepare_data          # downloads TinyStories, trains 4096-BPE tokenizer
-python -m nanohybrid.train --arch gpt      # or hybrid; ~15 min/4000 steps on a 12GB GPU
+python smoke_test.py                       # chunk/recurrent equivalence + decode-cache checks
+python -m nanohybrid.prepare_data          # downloads TinyStories, trains 4096-BPE tokenizer (to ./data)
+python -m nanohybrid.train --arch gpt      # or hybrid; ~15 min/4000 steps on an RTX 5070 Ti (to ./ckpt)
 python -m nanohybrid.bench_decode          # throughput + resident-cache curves
-python -m nanohybrid.plot_results          # regenerates docs/figures/
+python -m nanohybrid.plot_results          # writes figures to ./ckpt/figures/
 python -m nanohybrid.generate --arch hybrid --prompt "Once upon a time" --tokens 150
 ```
 

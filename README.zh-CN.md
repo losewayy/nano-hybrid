@@ -38,10 +38,11 @@
 
 ```
 pip install -r requirements.txt
-python -m nanohybrid.prepare_data          # 下载 TinyStories，训练 4096-BPE 分词器
-python -m nanohybrid.train --arch gpt      # 或 hybrid；12GB 显存约 15 分钟/4000 步
+python smoke_test.py                       # chunk/recurrent 等价 + decode-cache 一致性检查
+python -m nanohybrid.prepare_data          # 下载 TinyStories，训练 4096-BPE 分词器（输出到 ./data）
+python -m nanohybrid.train --arch gpt      # 或 hybrid；RTX 5070 Ti 上约 15 分钟/4000 步（输出到 ./ckpt）
 python -m nanohybrid.bench_decode          # 吞吐 + 驻留 cache 曲线
-python -m nanohybrid.plot_results          # 重新生成 docs/figures/
+python -m nanohybrid.plot_results          # 生成图片到 ./ckpt/figures/
 python -m nanohybrid.generate --arch hybrid --prompt "Once upon a time" --tokens 150
 ```
 

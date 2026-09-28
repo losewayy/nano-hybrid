@@ -1,6 +1,6 @@
 """Download TinyStories, train a small SentencePiece BPE, pretokenize to .bin.
 
-Outputs under _scratch/nano-hybrid/data:
+Outputs under DATA_DIR (default ./data):
   tok4096.model / tok4096.vocab   sentencepiece model
   train.bin / val.bin             uint16 token ids (numpy memmap)
   meta.json
@@ -23,7 +23,7 @@ SPM_TRAIN_CHARS = 64 * 1024 * 1024  # 64MB slice is plenty for BPE training
 # cap how much we tokenize (4000 steps * 32 * 256 = ~33M tokens needed; keep margin)
 MAX_TRAIN_TOKENS = 45_000_000
 
-DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else r"F:\projects\_scratch\nano-hybrid\data"
+DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else "data"
 
 
 def main():
@@ -75,7 +75,7 @@ def main():
         print(name, len(arr), "tokens ->", out_path)
 
     with open(os.path.join(DATA_DIR, "meta.json"), "w") as f:
-        json.dump({"vocab_size": sp.vocab_size(), "tokenizer": model_prefix + ".model"}, f)
+        json.dump({"vocab_size": sp.vocab_size(), "tokenizer": f"tok{VOCAB}.model"}, f)
 
 
 if __name__ == "__main__":

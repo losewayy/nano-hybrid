@@ -24,7 +24,7 @@ def evaluate(model, eval_xy, device, bf16=True):
     model.eval()
     losses = []
     for x, y in eval_xy:
-        with torch.autocast("cuda", dtype=torch.bfloat16, enabled=bf16):
+        with torch.autocast(device, dtype=torch.bfloat16, enabled=bf16 and device == "cuda"):
             loss = torch.nn.functional.cross_entropy(
                 model(x).view(-1, model.cfg.vocab_size), y.view(-1))
         losses.append(loss.item())
@@ -42,8 +42,8 @@ def lr_at(step, cfg: TrainConfig):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--arch", choices=["gpt", "hybrid"], required=True)
-    p.add_argument("--data", default=r"F:\projects\_scratch\nano-hybrid\data")
-    p.add_argument("--out", default=r"F:\projects\_scratch\nano-hybrid\ckpt")
+    p.add_argument("--data", default="data")
+    p.add_argument("--out", default="ckpt")
     p.add_argument("--steps", type=int, default=None)
     p.add_argument("--seed", type=int, default=None)
     args = p.parse_args()
@@ -57,7 +57,7 @@ def main():
     if args.seed is not None:
         tcfg.seed = args.seed
     torch.manual_seed(tcfg.seed)
-    device = "cuda"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # dedicated generators: identical batch sequence AND identical eval subset
     # across architectures/seeds => paired comparison
@@ -78,7 +78,7 @@ def main():
     opt = torch.optim.AdamW(
         [{"params": decay, "weight_decay": tcfg.weight_decay},
          {"params": no_decay, "weight_decay": 0.0}],
-        lr=tcfg.lr, betas=(0.9, 0.95), fused=True)
+        lr=tcfg.lr, betas=(0.9, 0.95), fused=device == "cuda")
 
     run_dir = os.path.join(args.out, args.arch, f"seed{tcfg.seed}")
     os.makedirs(run_dir, exist_ok=True)
@@ -97,7 +97,7 @@ def main():
             g["lr"] = lr
 
         x, y = get_batch(train, mcfg.ctx_len, tcfg.batch_size, device, data_gen)
-        with torch.autocast("cuda", dtype=torch.bfloat16, enabled=tcfg.bf16):
+        with torch.autocast(device, dtype=torch.bfloat16, enabled=tcfg.bf16 and device == "cuda"):
             logits = model(x)
             loss = torch.nn.functional.cross_entropy(
                 logits.view(-1, mcfg.vocab_size), y.view(-1))

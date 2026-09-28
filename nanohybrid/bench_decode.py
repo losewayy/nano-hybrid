@@ -25,13 +25,13 @@ from .config import ModelConfig
 from .model import NanoLM
 
 
-def load(arch, ckpt_dir, data_dir, seed):
+def load(arch, ckpt_dir, data_dir, seed, dev):
     meta = json.load(open(os.path.join(data_dir, "meta.json")))
     cfg = ModelConfig(arch=arch, mlp_hidden=896 if arch == "hybrid" else 1024)
     cfg.vocab_size = meta["vocab_size"]
-    m = NanoLM(cfg).cuda().eval()
+    m = NanoLM(cfg).to(dev).eval()
     ck = torch.load(os.path.join(ckpt_dir, arch, f"seed{seed}", "last.pt"),
-                    map_location="cuda", weights_only=False)
+                    map_location=dev, weights_only=False)
     m.load_state_dict(ck["model"])
     return m
 
@@ -52,34 +52,38 @@ def resident_cache_bytes(caches):
 
 @torch.no_grad()
 def bench_one(model, ctx, gen, batch):
-    idx = torch.randint(0, model.cfg.vocab_size, (batch, ctx), device="cuda")
+    dev = next(model.parameters()).device
+    idx = torch.randint(0, model.cfg.vocab_size, (batch, ctx), device=dev)
     caches = [{} for _ in model.blocks]
     logits = model(idx, caches, 0)                       # prefill (not measured)
     cur = logits[:, -1].argmax(-1, keepdim=True)          # first sampled token
-    torch.cuda.synchronize()
+    if dev.type == "cuda":
+        torch.cuda.synchronize()
     t0 = time.perf_counter()
     for i in range(gen):
         logits = model(cur, caches, ctx + i)
         cur = logits[:, -1].argmax(-1, keepdim=True)
-    torch.cuda.synchronize()
+    if dev.type == "cuda":
+        torch.cuda.synchronize()
     dt = time.perf_counter() - t0
     return gen * batch / dt, resident_cache_bytes(caches) / 2**20
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--ckpt", default=r"F:\projects\_scratch\nano-hybrid\ckpt")
-    p.add_argument("--data", default=r"F:\projects\_scratch\nano-hybrid\data")
+    p.add_argument("--ckpt", default="ckpt")
+    p.add_argument("--data", default="data")
     p.add_argument("--gen", type=int, default=128)
     p.add_argument("--batch", type=int, default=16)
     p.add_argument("--reps", type=int, default=3)
     p.add_argument("--seed", type=int, default=1337)
     args = p.parse_args()
 
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
     ctxs = [256, 512, 1024, 2048, 4096]
     results = {}
     for arch in ("gpt", "hybrid"):
-        model = load(arch, args.ckpt, args.data, args.seed)
+        model = load(arch, args.ckpt, args.data, args.seed, dev)
         rows = []
         for ctx in ctxs:
             try:
